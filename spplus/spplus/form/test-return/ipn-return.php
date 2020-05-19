@@ -26,7 +26,7 @@ function saveIpn($data = null)
 {
 	// get file
 	$filename = dirname(__FILE__) . "/log"; // filePath
-	$handle = fopen($filename, 'a+');
+	$handle = fopen($filename, 'a+') or die("Unable to open file!");
 	if (! file_exists($filename) || ! $handle) {
 		throw new Exception('Log file can not be opened or does not exist');
 	} else {
@@ -38,10 +38,23 @@ function saveIpn($data = null)
 	}
 }
 
-$toolbox = require "../config/config.php";
+// require_once ("../lib/class-payment-form-toolbox.php");
+require_once ("../../../wpbc-gw-spplus.php");
+$args = WPBC_Gateway_API_SPPlus::get_PaymentFormToolBox_args();
+
+// print_r($args);
+$toolbox = new paymentFormToolbox($args);
 $control = $toolbox->checkSignature($_POST);
 
-if(/*isset($_POST['vads_hash']) &&*/ $control) {
+if (! $control) {
+	$err = "Signature check failed!";
+	echo $err;
+	error_log($err);
+}
+
+if (isset($_POST['vads_hash']) && $control) {
 	$response = $toolbox->getIpn();
+	// error_log(print_r($response, true));
 	saveIpn($response);
 }
+

@@ -271,7 +271,7 @@ class WPBC_Gateway_API_SPPlus extends WPBC_Gateway_API
 		$payment_options['platform_url'] = get_bk_option('booking_spplus_platform_url');
 		$payment_options['curency'] = get_bk_option('booking_spplus_curency');
 
-		$return_link = WPBC_PLUGIN_URL . '/inc/gateways/wpbc-response.php' . '?payed_booking=' . $params['booking_id'] . '&wp_nonce=' . $params['__nonce'] . '&pay_sys=spplus';
+		$return_link = WPBC_PLUGIN_URL . '/inc/gateways/wpbc-response.php' . '?payed_booking=' . $params['booking_id'] . '&wp_nonce=' . $params['__nonce'] . '&pay_sys=' . WPBC_SPPLUS_GATEWAY_ID;
 		// $payment_options['url_return'] = get_option('siteurl') . "/index.php/reserver/";
 		// $payment_options['url_return'] = WPBC_PLUGIN_URL . '/inc/gateways/spplus/spplus/form/return/form-return.php';
 		// $payment_options['url_return'] = get_option('siteurl') . get_bk_option('booking_spplus_order_successful');
@@ -296,7 +296,8 @@ class WPBC_Gateway_API_SPPlus extends WPBC_Gateway_API
 		);
 
 		// print_r($args);
-		$toolbox = new paymentFormToolbox($args);
+		$toolbox = WPBC_Gateway_API_SPPlus::getPaymentFormToolbox($args);
+		// $toolbox = new paymentFormToolbox($args);
 
 		$amount = floatval($params['cost_in_gateway']);
 
@@ -304,6 +305,7 @@ class WPBC_Gateway_API_SPPlus extends WPBC_Gateway_API
 		$amount = $amount * 100;
 
 		$args = array(
+			// Mandatory
 			'vads_amount' => array(
 				'value' => strval($amount), // The amount of the transaction presented in the smallest unit of the currency (cents for Euro).
 				'label' => $i18n['price'],
@@ -314,7 +316,17 @@ class WPBC_Gateway_API_SPPlus extends WPBC_Gateway_API
 				'help' => $i18n['displayrealprice']
 			),
 			"vads_currency" => "978",
-			"vads_url_return" => $payment_options['url_return']
+			"vads_url_return" => $payment_options['url_return'],
+
+			// Non mandatory
+			"vads_order_id" => $params['booking_id'],
+			"vads_cust_email" => $params['email'],
+			"vads_cust_first_name" => $params['secondname'],
+			"vads_cust_last_name" => $params['name'],
+			"vads_cust_phone" => $params['phone'],
+
+			"payed_booking" => $params['booking_id'],
+			"wp_nonce" => $params['__nonce']
 		);
 
 		// Retrieve FORM DATA
@@ -349,7 +361,6 @@ class WPBC_Gateway_API_SPPlus extends WPBC_Gateway_API
 				$addon_end = '<span class="glyphicon glyphicon-euro form-control-feedback" aria-hidden="true"></span></div>';
 			}
 
-			// $form .= $hidden_field;
 			$form .= '<div class="form-group ' . $wrapper_class . '">';
 			$form .= '<label for="' . $name . '" class="col-sm-2 control-label">' . $label . '</label>';
 			$form .= '<div class="col-sm-10">';
@@ -681,7 +692,7 @@ class WPBC_Gateway_API_SPPlus extends WPBC_Gateway_API
 		}
 	}
 
-	private function get_PaymentFormToolBox_args()
+	public static function get_PaymentFormToolBox_args()
 	{
 		$payment_options = array();
 		$payment_options['account_mode'] = get_bk_option('booking_spplus_account_mode');
@@ -702,6 +713,12 @@ class WPBC_Gateway_API_SPPlus extends WPBC_Gateway_API
 		return $args;
 	}
 
+	public static function getPaymentFormToolbox($args)
+	{
+		require_once (__DIR__ . "/spplus/form/lib/class-payment-form-toolbox.php");
+		return new paymentFormToolbox($args);
+	}
+
 	/**
 	 * Update Payment Status after Response from specific Payment system website.
 	 *
@@ -719,9 +736,8 @@ class WPBC_Gateway_API_SPPlus extends WPBC_Gateway_API
 		if ($pay_system == WPBC_SPPLUS_GATEWAY_ID) {
 
 			include 'spplus/form/lib/locale/fr_FR/messages.php';
-			require_once (__DIR__ . "/spplus/form/lib/class-payment-form-toolbox.php");
-			$args = $this->get_PaymentFormToolBox_args();
-			$toolbox = new paymentFormToolbox($args);
+			$args = WPBC_Gateway_API_SPPlus::get_PaymentFormToolBox_args();
+			$toolbox = WPBC_Gateway_API_SPPlus::getPaymentFormToolbox($args);
 			$control = $toolbox->checkSignature($_POST);
 
 			if ($control && $toolbox->debug == true) {
